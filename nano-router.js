@@ -6,8 +6,39 @@ export class Router {
     this.currentPath = null;
   }
 
+  // Nuevo: registrar rutas con parámetros
   register(path, page) {
-    this.routes.set(path, page);
+    const paramNames = [];
+    const regex = new RegExp(
+      '^' +
+      path
+        .split('/')
+        .map(seg => {
+          if (seg.startsWith(':')) {
+            paramNames.push(seg.slice(1));
+            return '([^/]+)';
+          }
+          return seg;
+        })
+        .join('/') +
+      '$'
+    );
+    this.routes.set({ regex, paramNames }, page);
+  }
+
+  // Nuevo: extraer parámetros de la URL
+  extractParams(path) {
+    for (const [{ regex, paramNames }, page] of this.routes.entries()) {
+      const match = path.match(regex);
+      if (match) {
+        const params = {};
+        paramNames.forEach((name, i) => {
+          params[name] = match[i + 1];
+        });
+        return { page, params };
+      }
+    }
+    return null;
   }
 
   async navigate(path) {
@@ -17,12 +48,13 @@ export class Router {
       this.currentCleanup();
     }
 
-    const page = this.routes.get(path);
-    if (!page) {
+    const route = this.extractParams(path);
+    if (!route) {
       console.error(`Ruta no encontrada: ${path}`);
       return;
     }
 
+    const { page, params } = route;
     this.currentPath = path;
 
     if (window.location.pathname !== path) {
@@ -30,7 +62,7 @@ export class Router {
     }
 
     document.querySelectorAll('nav a').forEach(link => {
-      link.classList.toggle('active', link.getAttribute('href') === path);
+      link.classList.toggle('active', link.getAttribute('href') === path.split('/').slice(0, 3).join('/'));
     });
 
     const container = document.querySelector(this.mountPoint);
@@ -52,7 +84,7 @@ export class Router {
     }
 
     if (page.init) {
-      this.currentCleanup = page.init(container);
+      this.currentCleanup = page.init(container, params);
     }
   }
 
