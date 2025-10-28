@@ -1,7 +1,3 @@
-Aquí tienes el README actualizado, incluyendo la nueva funcionalidad de rutas con parámetros:
-
----
-
 # **Nano-Router**
 ---
 ## **Descripción General**
